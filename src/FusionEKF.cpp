@@ -36,6 +36,21 @@ FusionEKF::FusionEKF() {
    * TODO: Finish initializing the FusionEKF.
    * TODO: Set the process and measurement noises
    */
+  
+  // Process Noise
+  Hj_<< 1,1,0,0,
+  1,1,0,0,
+  1,1,1,1;
+
+  ekf_.F_ = MatrixXd(4, 4);
+  ekf_.F_ << 1,0,0,0,
+            0,1,0,0,
+            0,0,1,0,
+            0,0,0,1;
+  
+  // measurement matrix
+  H_laser_ << 1,0,0,0,
+              0,1,0,0;
 
 
 }
@@ -55,6 +70,14 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
      * TODO: Create the covariance matrix.
      * You'll need to convert radar from polar to cartesian coordinates.
      */
+    
+    previous_timestamp_ = measurement_pack.timestamp_;
+   
+    ekf_.P_ = MatrixXd(4, 4);
+    ekf_.P_ << 1.0,0.0,0.0,0.0,
+               0.0,1.0,0.0,0.0,
+               0.0,0.0,1.0,0.0,
+               0.0,0.0,0.0,1.0;
 
     // first measurement
     cout << "EKF: " << endl;
@@ -65,9 +88,31 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       // TODO: Convert radar from polar to cartesian coordinates 
       //         and initialize state.
 
+      float rho     = measurement_pack.raw_measurements_[0]; // range
+      float phi     = measurement_pack.raw_measurements_[1]; // bearing
+      float rho_dot = measurement_pack.raw_measurements_[2]; // rate
+
+      cout << "rho: " << rho << endl;
+      cout << "phi: " << phi << endl;
+      cout << "rho_dot: " << rho_dot << endl;
+
+      // Normalize phi to [-pi, pi]
+      while (phi > M_PI)  phi -= 2.0 * M_PI;
+      while (phi < -M_PI) phi += 2.0 * M_PI;
+
+      // Convert each coordinate
+      float x  = rho * cos(phi);
+      float y  = rho * sin(phi);
+      float vx = rho_dot * cos(phi);
+      float vy = rho_dot * sin(phi);
+
+      ekf_.x_ << x, y, vx, vy;
     }
     else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
       // TODO: Initialize state.
+      float x = measurement_pack.raw_measurements_[0];
+      float y = measurement_pack.raw_measurements_[1];
+      ekf_.x_ << x, y, 0, 0;
 
     }
 
@@ -111,3 +156,4 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
   cout << "x_ = " << ekf_.x_ << endl;
   cout << "P_ = " << ekf_.P_ << endl;
 }
+
